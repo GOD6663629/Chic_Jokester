@@ -1,168 +1,163 @@
-// Game variables
-let deck = [];
-let dealerCards = [];
-let playerCards = [];
-let gameOver = false;
-
-// DOM elements
-const dealerCardsEl = document.getElementById('dealer-cards');
-const playerCardsEl = document.getElementById('player-cards');
-const dealerScoreEl = document.getElementById('dealer-score');
-const playerScoreEl = document.getElementById('player-score');
-const messageEl = document.getElementById('message');
-const hitBtn = document.getElementById('hit-btn');
-const standBtn = document.getElementById('stand-btn');
-const newGameBtn = document.getElementById('new-game-btn');
-
-// Card suits and values
-const suits = ['♠', '♣', '♥', '♦'];
-const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-
-// Initialize game
-function initGame() {
-    // Create and shuffle deck
-    deck = createDeck();
-    shuffleDeck(deck);
-    
-    // Reset hands
-    dealerCards = [drawCard(), drawCard()];
-    playerCards = [drawCard(), drawCard()];
-    
-    gameOver = false;
-    
-    // Update UI
-    renderGame();
-    
-    // Check for blackjack
-    if (calculateScore(playerCards) === 21) {
-        stand();
-    }
-}
-
-// Create a deck of cards
-function createDeck() {
-    const deck = [];
-    for (let suit of suits) {
-        for (let value of values) {
-            deck.push({ suit, value });
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blackjack</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: url('https://i.imgur.com/5f6xEfL.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: #ffffff;
+            text-align: center;
+            margin: 0;
+            padding: 0;
         }
-    }
-    return deck;
-}
-
-// Shuffle the deck
-function shuffleDeck(deck) {
-    for (let i = deck.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [deck[i], deck[j]] = [deck[j], deck[i]];
-    }
-}
-
-// Draw a card from the deck
-function drawCard() {
-    return deck.pop();
-}
-
-// Calculate score of a hand
-function calculateScore(hand) {
-    let score = 0;
-    let hasAce = false;
-    
-    for (let card of hand) {
-        if (card.value === 'A') {
-            hasAce = true;
-            score += 11;
-        } else if (['K', 'Q', 'J'].includes(card.value)) {
-            score += 10;
-        } else {
-            score += parseInt(card.value);
+        #game-area {
+            margin-top: 50px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            display: inline-block;
+            box-shadow: 0px 0px 15px rgba(255, 255, 255, 0.1);
+            animation: fadeIn 1s ease-in-out;
         }
-    }
-    
-    // Handle aces
-    if (hasAce && score > 21) {
-        score -= 10;
-    }
-    
-    return score;
-}
-
-// Render the game state
-function renderGame() {
-    // Clear card displays
-    dealerCardsEl.innerHTML = '';
-    playerCardsEl.innerHTML = '';
-    
-    // Show dealer's cards (hide first card if game isn't over)
-    dealerCards.forEach((card, index) => {
-        if (index === 0 && !gameOver) {
-            dealerCardsEl.innerHTML += `<div class="card"><div class="card-back">🂠</div></div>`;
-        } else {
-            const colorClass = ['♥', '♦'].includes(card.suit) ? 'red' : 'black';
-            dealerCardsEl.innerHTML += `<div class="card ${colorClass}"><div class="card-value">${card.value}${card.suit}</div></div>`;
+        .button {
+            background: #ff9800;
+            border: none;
+            padding: 12px 20px;
+            margin: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #fff;
+            border-radius: 5px;
+            transition: 0.3s;
         }
-    });
-    
-    // Show player's cards
-    playerCards.forEach(card => {
-        const colorClass = ['♥', '♦'].includes(card.suit) ? 'red' : 'black';
-        playerCardsEl.innerHTML += `<div class="card ${colorClass}"><div class="card-value">${card.value}${card.suit}</div></div>`;
-    });
-    
-    // Update scores
-    dealerScoreEl.textContent = gameOver ? calculateScore(dealerCards) : '?';
-    playerScoreEl.textContent = calculateScore(playerCards);
-    
-    // Check for game over conditions
-    if (gameOver) {
-        const dealerScore = calculateScore(dealerCards);
-        const playerScore = calculateScore(playerCards);
-        
-        if (playerScore > 21) {
-            messageEl.textContent = 'Bust! You lose.';
-        } else if (dealerScore > 21) {
-            messageEl.textContent = 'Dealer busts! You win!';
-        } else if (playerScore > dealerScore) {
-            messageEl.textContent = 'You win!';
-        } else if (playerScore < dealerScore) {
-            messageEl.textContent = 'You lose.';
-        } else {
-            messageEl.textContent = 'Push! It\'s a tie.';
+        .button:hover {
+            background: #e68900;
+            transform: scale(1.1);
         }
-    } else {
-        messageEl.textContent = '';
-    }
-}
-
-// Player hits (takes another card)
-function hit() {
-    if (!gameOver) {
-        playerCards.push(drawCard());
-        renderGame();
-        
-        // Check if player busts
-        if (calculateScore(playerCards) > 21) {
-            stand();
+        h1 {
+            font-size: 32px;
+            margin-top: 20px;
         }
-    }
-}
+        #status {
+            font-size: 18px;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        .cards {
+            width: 80px;
+            height: 120px;
+            display: inline-block;
+            margin: 5px;
+            background-size: cover;
+            border-radius: 8px;
+            box-shadow: 2px 2px 10px rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease-in-out, opacity 0.5s;
+            opacity: 0;
+        }
+        .card-appear {
+            opacity: 1;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Blackjack</h1>
+    <div id="game-area">
+        <p id="status">Press 'Start Game' to play!</p>
+        <p>Your Cards: <span id="player-cards"></span> (<span id="player-score">0</span>)</p>
+        <p>Dealer's Cards: <span id="dealer-cards"></span> (<span id="dealer-score">0</span>)</p>
+        <button class="button" onclick="startGame()">Start Game</button>
+        <button class="button" onclick="hit()">Hit</button>
+        <button class="button" onclick="stand()">Stand</button>
+    </div>
+    <audio id="card-sound" src="https://www.soundjay.com/card/card-flip-1.mp3"></audio>
+    <script>
+        let deck, playerHand, dealerHand;
 
-// Player stands (ends their turn)
-function stand() {
-    gameOver = true;
-    
-    // Dealer draws until score >= 17
-    while (calculateScore(dealerCards) < 17) {
-        dealerCards.push(drawCard());
-    }
-    
-    renderGame();
-}
+        function createDeck() {
+            let suits = ["♠", "♥", "♦", "♣"];
+            let values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+            let deck = [];
+            for (let suit of suits) {
+                for (let value of values) {
+                    let imageUrl = `https://deckofcardsapi.com/static/img/${value}${suit.charAt(0)}.png`;
+                    deck.push({ value, suit, imageUrl });
+                }
+            }
+            return deck.sort(() => Math.random() - 0.5);
+        }
 
-// Event listeners
-hitBtn.addEventListener('click', hit);
-standBtn.addEventListener('click', stand);
-newGameBtn.addEventListener('click', initGame);
+        function calculateScore(hand) {
+            let score = 0;
+            let aces = 0;
+            for (let card of hand) {
+                if (["J", "Q", "K"].includes(card.value)) {
+                    score += 10;
+                } else if (card.value === "A") {
+                    score += 11;
+                    aces++;
+                } else {
+                    score += parseInt(card.value);
+                }
+            }
+            while (score > 21 && aces) {
+                score -= 10;
+                aces--;
+            }
+            return score;
+        }
 
-// Start the game
-initGame();
+        function startGame() {
+            deck = createDeck();
+            playerHand = [deck.pop(), deck.pop()];
+            dealerHand = [deck.pop(), deck.pop()];
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            document.getElementById("player-cards").innerHTML = playerHand.map(c => `<img class='cards card-appear' src='${c.imageUrl}' alt='card'>`).join(" ");
+            document.getElementById("dealer-cards").innerHTML = dealerHand.map(c => `<img class='cards card-appear' src='${c.imageUrl}' alt='card'>`).join(" ");
+            document.getElementById("player-score").textContent = calculateScore(playerHand);
+            document.getElementById("dealer-score").textContent = calculateScore(dealerHand);
+            playSound();
+        }
+
+        function hit() {
+            playerHand.push(deck.pop());
+            updateDisplay();
+            if (calculateScore(playerHand) > 21) {
+                document.getElementById("status").textContent = "Bust! You lose!";
+            }
+        }
+
+        function stand() {
+            while (calculateScore(dealerHand) < 17) {
+                dealerHand.push(deck.pop());
+            }
+            updateDisplay();
+            let playerScore = calculateScore(playerHand);
+            let dealerScore = calculateScore(dealerHand);
+            if (dealerScore > 21 || playerScore > dealerScore) {
+                document.getElementById("status").textContent = "You Win!";
+            } else if (playerScore < dealerScore) {
+                document.getElementById("status").textContent = "Dealer Wins!";
+            } else {
+                document.getElementById("status").textContent = "It's a Tie!";
+            }
+        }
+
+        function playSound() {
+            document.getElementById("card-sound").play();
+        }
+    </script>
+</body>
+</html>
