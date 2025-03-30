@@ -1,0 +1,168 @@
+// Game variables
+let deck = [];
+let dealerCards = [];
+let playerCards = [];
+let gameOver = false;
+
+// DOM elements
+const dealerCardsEl = document.getElementById('dealer-cards');
+const playerCardsEl = document.getElementById('player-cards');
+const dealerScoreEl = document.getElementById('dealer-score');
+const playerScoreEl = document.getElementById('player-score');
+const messageEl = document.getElementById('message');
+const hitBtn = document.getElementById('hit-btn');
+const standBtn = document.getElementById('stand-btn');
+const newGameBtn = document.getElementById('new-game-btn');
+
+// Card suits and values
+const suits = ['♠', '♣', '♥', '♦'];
+const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+// Initialize game
+function initGame() {
+    // Create and shuffle deck
+    deck = createDeck();
+    shuffleDeck(deck);
+    
+    // Reset hands
+    dealerCards = [drawCard(), drawCard()];
+    playerCards = [drawCard(), drawCard()];
+    
+    gameOver = false;
+    
+    // Update UI
+    renderGame();
+    
+    // Check for blackjack
+    if (calculateScore(playerCards) === 21) {
+        stand();
+    }
+}
+
+// Create a deck of cards
+function createDeck() {
+    const deck = [];
+    for (let suit of suits) {
+        for (let value of values) {
+            deck.push({ suit, value });
+        }
+    }
+    return deck;
+}
+
+// Shuffle the deck
+function shuffleDeck(deck) {
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+}
+
+// Draw a card from the deck
+function drawCard() {
+    return deck.pop();
+}
+
+// Calculate score of a hand
+function calculateScore(hand) {
+    let score = 0;
+    let hasAce = false;
+    
+    for (let card of hand) {
+        if (card.value === 'A') {
+            hasAce = true;
+            score += 11;
+        } else if (['K', 'Q', 'J'].includes(card.value)) {
+            score += 10;
+        } else {
+            score += parseInt(card.value);
+        }
+    }
+    
+    // Handle aces
+    if (hasAce && score > 21) {
+        score -= 10;
+    }
+    
+    return score;
+}
+
+// Render the game state
+function renderGame() {
+    // Clear card displays
+    dealerCardsEl.innerHTML = '';
+    playerCardsEl.innerHTML = '';
+    
+    // Show dealer's cards (hide first card if game isn't over)
+    dealerCards.forEach((card, index) => {
+        if (index === 0 && !gameOver) {
+            dealerCardsEl.innerHTML += `<div class="card"><div class="card-back">🂠</div></div>`;
+        } else {
+            const colorClass = ['♥', '♦'].includes(card.suit) ? 'red' : 'black';
+            dealerCardsEl.innerHTML += `<div class="card ${colorClass}"><div class="card-value">${card.value}${card.suit}</div></div>`;
+        }
+    });
+    
+    // Show player's cards
+    playerCards.forEach(card => {
+        const colorClass = ['♥', '♦'].includes(card.suit) ? 'red' : 'black';
+        playerCardsEl.innerHTML += `<div class="card ${colorClass}"><div class="card-value">${card.value}${card.suit}</div></div>`;
+    });
+    
+    // Update scores
+    dealerScoreEl.textContent = gameOver ? calculateScore(dealerCards) : '?';
+    playerScoreEl.textContent = calculateScore(playerCards);
+    
+    // Check for game over conditions
+    if (gameOver) {
+        const dealerScore = calculateScore(dealerCards);
+        const playerScore = calculateScore(playerCards);
+        
+        if (playerScore > 21) {
+            messageEl.textContent = 'Bust! You lose.';
+        } else if (dealerScore > 21) {
+            messageEl.textContent = 'Dealer busts! You win!';
+        } else if (playerScore > dealerScore) {
+            messageEl.textContent = 'You win!';
+        } else if (playerScore < dealerScore) {
+            messageEl.textContent = 'You lose.';
+        } else {
+            messageEl.textContent = 'Push! It\'s a tie.';
+        }
+    } else {
+        messageEl.textContent = '';
+    }
+}
+
+// Player hits (takes another card)
+function hit() {
+    if (!gameOver) {
+        playerCards.push(drawCard());
+        renderGame();
+        
+        // Check if player busts
+        if (calculateScore(playerCards) > 21) {
+            stand();
+        }
+    }
+}
+
+// Player stands (ends their turn)
+function stand() {
+    gameOver = true;
+    
+    // Dealer draws until score >= 17
+    while (calculateScore(dealerCards) < 17) {
+        dealerCards.push(drawCard());
+    }
+    
+    renderGame();
+}
+
+// Event listeners
+hitBtn.addEventListener('click', hit);
+standBtn.addEventListener('click', stand);
+newGameBtn.addEventListener('click', initGame);
+
+// Start the game
+initGame();
