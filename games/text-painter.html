@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Painter | Chic Jokester</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/styles.css">
+    <style>
+        #drawing-canvas {
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            touch-action: none;
+        }
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border: 2px solid transparent;
+        }
+        .color-option.active {
+            border-color: white;
+            transform: scale(1.1);
+        }
+        .tool-btn {
+            transition: all 0.2s ease;
+        }
+        .tool-btn.active {
+            background-color: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-pink-900 to-rose-800 min-h-screen text-white">
+    <div class="container mx-auto py-8 px-4">
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-center">Text Painter</h1>
+            <div class="flex justify-between items-center mt-4">
+                <a href="../index.html" class="text-pink-300 hover:text-white">
+                    <i class="fas fa-arrow-left mr-2"></i> Back to Games
+                </a>
+                <div class="score-display bg-white/10 px-4 py-2 rounded-full">
+                    <span class="font-bold">Brush Size:</span> <span id="brush-size">5</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex flex-col items-center">
+            <div class="canvas-container mb-6">
+                <canvas id="drawing-canvas" width="800" height="500"></canvas>
+            </div>
+
+            <div class="controls w-full max-w-2xl">
+                <div class="color-palette flex flex-wrap gap-2 mb-4 justify-center">
+                    <!-- Color options will be added by JavaScript -->
+                </div>
+
+                <div class="tools flex flex-wrap gap-2 mb-6 justify-center">
+                    <button id="brush-tool" class="tool-btn active bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full">
+                        <i class="fas fa-paint-brush mr-2"></i> Brush
+                    </button>
+                    <button id="text-tool" class="tool-btn bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full">
+                        <i class="fas fa-font mr-2"></i> Text
+                    </button>
+                    <button id="eraser-tool" class="tool-btn bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full">
+                        <i class="fas fa-eraser mr-2"></i> Eraser
+                    </button>
+                    <button id="clear-btn" class="tool-btn bg-red-500 hover:bg-red-600 px-4 py-2 rounded-full">
+                        <i class="fas fa-trash-alt mr-2"></i> Clear
+                    </button>
+                    <button id="undo-btn" class="tool-btn bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-full">
+                        <i class="fas fa-undo mr-2"></i> Undo
+                    </button>
+                    <button id="save-btn" class="tool-btn bg-green-500 hover:bg-green-600 px-4 py-2 rounded-full">
+                        <i class="fas fa-save mr-2"></i> Save
+                    </button>
+                </div>
+
+                <div class="brush-controls flex items-center gap-4 justify-center mb-6">
+                    <span class="font-semibold">Size:</span>
+                    <input type="range" id="brush-slider" min="1" max="50" value="5" class="w-48">
+                </div>
+
+                <div id="text-input-container" class="mb-6 hidden">
+                    <input type="text" id="text-input" placeholder="Enter your text" class="bg-white/10 border border-white/20 rounded-lg px-4 py-2 w-full text-white">
+                    <div class="flex gap-2 mt-2">
+                        <button id="add-text-btn" class="bg-pink-500 hover:bg-pink-600 px-4 py-2 rounded-full w-full">
+                            Add Text
+                        </button>
+                        <button id="cancel-text-btn" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/utils.js"></script>
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('drawing-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Drawing state
+        let isDrawing = false;
+        let currentTool = 'brush';
+        let currentColor = '#ffffff';
+        let brushSize = 5;
+        let drawingHistory = [];
+        let historyPointer = -1;
+        
+        // Text state
+        let textPosition = { x: 0, y: 0 };
+        
+        // Color palette
+        const colors = [
+            '#ffffff', '#000000', '#ff0000', '#00ff00', '#0000ff',
+            '#ffff00', '#00ffff', '#ff00ff', '#ff9500', '#4a00ff'
+        ];
+        
+        // DOM elements
+        const colorPalette = document.querySelector('.color-palette');
+        const brushTool = document.getElementById('brush-tool');
+        const textTool = document.getElementById('text-tool');
+        const eraserTool = document.getElementById('eraser-tool');
+        const clearBtn = document.getElementById('clear-btn');
+        const undoBtn = document.getElementById('undo-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const brushSlider = document.getElementById('brush-slider');
+        const brushSizeDisplay = document.getElementById('brush-size');
+        const textInputContainer = document.getElementById('text-input-container');
+        const textInput = document.getElementById('text-input');
+        const addTextBtn = document.getElementById('add-text-btn');
+        const cancelTextBtn = document.getElementById('cancel-text-btn');
+        
+        // Initialize the canvas
+        function initCanvas() {
+            // Set canvas background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Set initial drawing style
+            ctx.strokeStyle = currentColor;
+            ctx.lineWidth = brushSize;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Create color palette
+            createColorPalette();
+            
+            // Save initial state
+            saveCanvasState();
+        }
+        
+        // Create color palette
+        function createColorPalette() {
+            colorPalette.innerHTML = '';
+            
+            colors.forEach(color => {
+                const colorBtn = document.createElement('button');
+                colorBtn.className = 'color-option rounded-full';
+                colorBtn.style.backgroundColor = color;
+                colorBtn.dataset.color = color;
+                
+                if (color === currentColor) {
+                    colorBtn.classList.add('active');
+                }
+                
+                colorBtn.addEventListener('click', () => {
+                    currentColor = color;
+                    ctx.strokeStyle = currentColor;
+                    document.querySelectorAll('.color-option').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    colorBtn.classList.add('active');
+                });
+                
+                colorPalette.appendChild(colorBtn);
+            });
+        }
+        
+        // Start drawing
+        function startDrawing(e) {
+            if (currentTool === 'text') return;
+            
+            isDrawing = true;
+            
+            // Get position
+            const pos = getPosition(e);
+            
+            // Start new path
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            
+            // For dot when just clicking
+            if (currentTool === 'brush' || currentTool === 'eraser') {
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }
+        }
+        
+        // Draw
+        function draw(e) {
+            if (!isDrawing || currentTool === 'text') return;
+            
+            const pos = getPosition(e);
+            
+            if (currentTool === 'brush' || currentTool === 'eraser') {
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }
+        }
+        
+        // Stop drawing
+        function stopDrawing() {
+            if (isDrawing && currentTool !== 'text') {
+                saveCanvasState();
+            }
+            isDrawing = false;
+        }
+        
+        // Get mouse/touch position
+        function getPosition(e) {
+            let x, y;
+            
+            if (e.type.includes('touch')) {
+                const rect = canvas.getBoundingClientRect();
+                x = e.touches[0].clientX - rect.left;
+                y = e.touches[0].clientY - rect.top;
+            } else {
+                x = e.offsetX;
+                y = e.offsetY;
+            }
+            
+            return { x, y };
+        }
+        
+        // Save canvas state to history
+        function saveCanvasState() {
+            // Remove any states after current pointer
+            if (historyPointer < drawingHistory.length - 1) {
+                drawingHistory = drawingHistory.slice(0, historyPointer + 1);
+            }
+            
+            // Save current state
+            drawingHistory.push(canvas.toDataURL());
+            historyPointer++;
+            
+            // Update undo button state
+            updateUndoButton();
+        }
+        
+        // Undo last action
+        function undo() {
+            if (historyPointer > 0) {
+                historyPointer--;
+                restoreCanvas();
+            }
+        }
+        
+        // Restore canvas from history
+        function restoreCanvas() {
+            const img = new Image();
+            img.onload = function() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+            };
+            img.src = drawingHistory[historyPointer];
+            
+            updateUndoButton();
+        }
+        
+        // Update undo button state
+        function updateUndoButton() {
+            undoBtn.disabled = historyPointer <= 0;
+        }
+        
+        // Clear canvas
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            saveCanvasState();
+        }
+        
+        // Save canvas as image
+        function saveCanvas() {
+            const link = document.createElement('a');
+            link.download = 'text-painter-' + new Date().toISOString().slice(0, 10) + '.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        // Handle text tool click
+        function handleTextClick(e) {
+            if (currentTool !== 'text') return;
+            
+            const pos = getPosition(e);
+            textPosition = pos;
+            
+            // Show text input
+            textInputContainer.classList.remove('hidden');
+            textInput.focus();
+        }
+        
+        // Add text to canvas
+        function addText() {
+            const text = textInput.value.trim();
+            if (text === '') return;
+            
+            ctx.font = `${brushSize * 3}px Poppins`;
+            ctx.fillStyle = currentColor;
+            ctx.textBaseline = 'top';
+            ctx.fillText(text, textPosition.x, textPosition.y);
+            
+            textInput.value = '';
+            textInputContainer.classList.add('hidden');
+            saveCanvasState();
+        }
+        
+        // Cancel text input
+        function cancelText() {
+            textInput.value = '';
+            textInputContainer.classList.add('hidden');
+        }
+        
+        // Set active tool
+        function setActiveTool(tool) {
+            currentTool = tool;
+            
+            // Update tool buttons
+            brushTool.classList.remove('active');
+            textTool.classList.remove('active');
+            eraserTool.classList.remove('active');
+            
+            if (tool === 'brush') {
+                brushTool.classList.add('active');
+                ctx.strokeStyle = currentColor;
+                ctx.globalCompositeOperation = 'source-over';
+            } else if (tool === 'text') {
+                textTool.classList.add('active');
+            } else if (tool === 'eraser') {
+                eraserTool.classList.add('active');
+                ctx.strokeStyle = 'rgba(0, 0, 0, 1)';
+                ctx.globalCompositeOperation = 'destination-out';
+            }
+        }
+        
+        // Update brush size
+        function updateBrushSize() {
+            brushSize = brushSlider.value;
+            brushSizeDisplay.textContent = brushSize;
+            ctx.lineWidth = brushSize;
+        }
+        
+        // Event listeners
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+        
+        // Touch support
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startDrawing(e);
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            draw(e);
+        });
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            stopDrawing();
+        });
+        
+        canvas.addEventListener('click', handleTextClick);
+        
+        brushTool.addEventListener('click', () => setActiveTool('brush'));
+        textTool.addEventListener('click', () => setActiveTool('text'));
+        eraserTool.addEventListener('click', () => setActiveTool('eraser'));
+        clearBtn.addEventListener('click', clearCanvas);
+        undoBtn.addEventListener('click', undo);
+        saveBtn.addEventListener('click', saveCanvas);
+        brushSlider.addEventListener('input', updateBrushSize);
+        addTextBtn.addEventListener('click', addText);
+        cancelTextBtn.addEventListener('click', cancelText);
+        
+        // Initialize the canvas
+        initCanvas();
+    </script>
+</body>
+</html>
