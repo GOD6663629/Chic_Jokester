@@ -8,7 +8,7 @@
     <style>
         body {
             font-family: 'Poppins', sans-serif;
-            background: url('https://source.unsplash.com/1920x1080/?mountains,art') no-repeat center center fixed;
+            background: url('https://t4.ftcdn.net/jpg/04/20/86/73/360_F_420867335_srDH3p52ShctnCgpD6XPbdYUR1T0TB9B.jpg') no-repeat center center fixed;
             background-size: cover;
             color: #000000;
             text-align: center;
@@ -85,7 +85,7 @@
 
         function createDeck() {
             let suits = ["S", "H", "D", "C"];
-            let values = ["2", "3", "4", "5", "6", "7", "8", "9", "0", "J", "Q", "K", "A"];
+            let values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
             let deck = [];
             for (let suit of suits) {
                 for (let value of values) {
@@ -116,26 +116,25 @@
             return score;
         }
 
+        function playSound() {
+            document.getElementById("card-sound").play();
+        }
+
         function startGame() {
             deck = createDeck();
             playerHand = [deck.pop(), deck.pop()];
             dealerHand = [deck.pop(), deck.pop()];
             updateDisplay();
-        }
-
-        function updateDisplay() {
-            document.getElementById("player-cards").innerHTML = playerHand.map(c => `<img class='cards card-appear' src='${c.imageUrl}' alt='card'>`).join(" ");
-            document.getElementById("dealer-cards").innerHTML = dealerHand.map(c => `<img class='cards card-appear' src='${c.imageUrl}' alt='card'>`).join(" ");
-            document.getElementById("player-score").textContent = calculateScore(playerHand);
-            document.getElementById("dealer-score").textContent = calculateScore(dealerHand);
-            playSound();
+            document.getElementById("status").textContent = "Game Started. Hit or Stand?";
         }
 
         function hit() {
-            playerHand.push(deck.pop());
-            updateDisplay();
-            if (calculateScore(playerHand) > 21) {
-                document.getElementById("status").textContent = "Bust! You lose!";
+            if (playerHand.length < 5) {
+                playerHand.push(deck.pop());
+                updateDisplay();
+                if (calculateScore(playerHand) > 21) {
+                    determineWinner();
+                }
             }
         }
 
@@ -144,19 +143,31 @@
                 dealerHand.push(deck.pop());
             }
             updateDisplay();
-            let playerScore = calculateScore(playerHand);
-            let dealerScore = calculateScore(dealerHand);
-            if (dealerScore > 21 || playerScore > dealerScore) {
-                document.getElementById("status").textContent = "You Win!";
-            } else if (playerScore < dealerScore) {
-                document.getElementById("status").textContent = "Dealer Wins!";
-            } else {
-                document.getElementById("status").textContent = "It's a Tie!";
-            }
+            determineWinner();
         }
 
-        function playSound() {
-            document.getElementById("card-sound").play();
+        function updateDisplay() {
+            document.getElementById("player-cards").innerHTML = playerHand.map(c => `<img class='cards card-appear' src='${c.imageUrl}' alt='card'>`).join(" ");
+            document.getElementById("dealer-cards").innerHTML = dealerHand.map(c => `<img class='cards card-appear' src='${c.imageUrl}' alt='card'>`).join(" ");
+            document.getElementById("player-score").textContent = calculateScore(playerHand);
+            document.getElementById("dealer-score").textContent = dealerHand.length === 2 ? "?" : calculateScore(dealerHand);
+            playSound();
+        }
+
+        function determineWinner() {
+            let playerScore = calculateScore(playerHand);
+            let dealerScore = calculateScore(dealerHand);
+            let status = "";
+            if (playerScore > 21) {
+                status = "You Busted! Dealer Wins.";
+            } else if (dealerScore > 21 || playerScore > dealerScore) {
+                status = "You Win!";
+            } else if (playerScore < dealerScore) {
+                status = "Dealer Wins!";
+            } else {
+                status = "It's a Draw!";
+            }
+            document.getElementById("status").textContent = status;
         }
     </script>
 </body>
