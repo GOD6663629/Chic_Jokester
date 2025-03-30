@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess the Number | Chic Jokester</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/styles.css">
+    <style>
+        .guess-input {
+            width: 100px;
+            text-align: center;
+        }
+        .guess-history {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .guess-item {
+            transition: all 0.3s ease;
+        }
+        .guess-item:hover {
+            transform: scale(1.02);
+        }
+        /* Custom range slider */
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #ffffff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-yellow-900 to-amber-800 min-h-screen text-white">
+    <div class="container mx-auto py-8 px-4">
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-center">Guess the Number</h1>
+            <div class="flex justify-between items-center mt-4">
+                <a href="../index.html" class="text-yellow-300 hover:text-white">
+                    <i class="fas fa-arrow-left mr-2"></i> Back to Games
+                </a>
+                <div class="score-display bg-white/10 px-4 py-2 rounded-full">
+                    <span class="font-bold">High Score:</span> <span id="high-score">0</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex flex-col items-center">
+            <div class="game-area bg-white/10 backdrop-blur-md rounded-xl p-8 shadow-xl w-full max-w-md">
+                <div class="difficulty-selector mb-6">
+                    <h2 class="text-xl font-semibold mb-2">Select Difficulty:</h2>
+                    <div class="flex gap-4 mb-4">
+                        <button data-difficulty="easy" class="difficulty-btn bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full">Easy (1-50)</button>
+                        <button data-difficulty="medium" class="difficulty-btn bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-full">Medium (1-100)</button>
+                        <button data-difficulty="hard" class="difficulty-btn bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full">Hard (1-200)</button>
+                    </div>
+                </div>
+
+                <div class="range-selector mb-6" id="range-selector" style="display: none;">
+                    <h2 class="text-xl font-semibold mb-2">Custom Range:</h2>
+                    <div class="flex items-center gap-4 mb-2">
+                        <span>1</span>
+                        <input type="range" id="range-slider" min="50" max="500" value="100" class="flex-1">
+                        <span id="range-max">100</span>
+                    </div>
+                    <button id="custom-start-btn" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-full w-full">
+                        Start Game with Range 1-<span id="range-display">100</span>
+                    </button>
+                </div>
+
+                <div class="game-screen" id="game-screen" style="display: none;">
+                    <div class="mb-4 text-center">
+                        <p class="text-lg">Guess a number between <span id="range-start">1</span> and <span id="range-end">100</span></p>
+                        <p class="text-xl font-bold my-2">Attempts left: <span id="attempts-left">10</span></p>
+                    </div>
+
+                    <div class="flex gap-2 mb-6 justify-center">
+                        <input type="number" id="guess-input" class="guess-input bg-white/20 border border-white/30 text-white text-2xl font-bold rounded-lg px-4 py-2">
+                        <button id="guess-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-full">
+                            Guess
+                        </button>
+                    </div>
+
+                    <div class="feedback mb-6 text-center text-xl font-semibold min-h-8" id="feedback"></div>
+
+                    <div class="guess-history mb-6" id="guess-history">
+                        <h3 class="text-lg font-semibold mb-2">Your Guesses:</h3>
+                        <div class="space-y-2" id="guess-list"></div>
+                    </div>
+
+                    <div class="flex justify-center">
+                        <button id="new-game-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-full">
+                            <i class="fas fa-redo mr-2"></i> New Game
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/utils.js"></script>
+    <script>
+        // Game variables
+        let targetNumber = 0;
+        let attemptsLeft = 0;
+        let maxAttempts = 10;
+        let minRange = 1;
+        let maxRange = 100;
+        let guesses = [];
+        let highScore = 0;
+
+        // DOM elements
+        const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+        const rangeSelector = document.getElementById('range-selector');
+        const rangeSlider = document.getElementById('range-slider');
+        const rangeMax = document.getElementById('range-max');
+        const rangeDisplay = document.getElementById('range-display');
+        const customStartBtn = document.getElementById('custom-start-btn');
+        const gameScreen = document.getElementById('game-screen');
+        const rangeStart = document.getElementById('range-start');
+        const rangeEnd = document.getElementById('range-end');
+        const attemptsLeftDisplay = document.getElementById('attempts-left');
+        const guessInput = document.getElementById('guess-input');
+        const guessBtn = document.getElementById('guess-btn');
+        const feedback = document.getElementById('feedback');
+        const guessList = document.getElementById('guess-list');
+        const newGameBtn = document.getElementById('new-game-btn');
+        const highScoreDisplay = document.getElementById('high-score');
+
+        // Initialize the game
+        function initGame() {
+            // Load high score
+            highScore = getHighScore('guessNumber') || 0;
+            highScoreDisplay.textContent = highScore;
+            
+            // Show difficulty selector
+            document.querySelector('.difficulty-selector').style.display = 'block';
+            rangeSelector.style.display = 'none';
+            gameScreen.style.display = 'none';
+            
+            // Reset game variables
+            guesses = [];
+            updateGuessList();
+        }
+
+        // Start game with selected difficulty
+        function startGame(difficulty) {
+            switch(difficulty) {
+                case 'easy':
+                    minRange = 1;
+                    maxRange = 50;
+                    maxAttempts = 10;
+                    break;
+                case 'medium':
+                    minRange = 1;
+                    maxRange = 100;
+                    maxAttempts = 10;
+                    break;
+                case 'hard':
+                    minRange = 1;
+                    maxRange = 200;
+                    maxAttempts = 8;
+                    break;
+                case 'custom':
+                    minRange = 1;
+                    maxRange = parseInt(rangeSlider.value);
+                    maxAttempts = Math.min(15, Math.floor(maxRange / 10) + 5);
+                    break;
+            }
+            
+            // Generate random number
+            targetNumber = getRandomInt(minRange, maxRange);
+            attemptsLeft = maxAttempts;
+            guesses = [];
+            
+            // Update UI
+            rangeStart.textContent = minRange;
+            rangeEnd.textContent = maxRange;
+            attemptsLeftDisplay.textContent = attemptsLeft;
+            feedback.textContent = '';
+            guessInput.value = '';
+            updateGuessList();
+            
+            // Show game screen
+            document.querySelector('.difficulty-selector').style.display = 'none';
+            rangeSelector.style.display = 'none';
+            gameScreen.style.display = 'block';
+            
+            // Focus input
+            guessInput.focus();
+        }
+
+        // Handle guess submission
+        function handleGuess() {
+            const guess = parseInt(guessInput.value);
+            
+            // Validate input
+            if (isNaN(guess) || guess < minRange || guess > maxRange) {
+                showModal(`Please enter a number between ${minRange} and ${maxRange}`, 'error');
+                vibrate(200);
+                return;
+            }
+            
+            // Check if already guessed
+            if (guesses.includes(guess)) {
+                showModal('You already guessed that number!', 'error');
+                vibrate(200);
+                return;
+            }
+            
+            // Add to guesses
+            guesses.push(guess);
+            attemptsLeft--;
+            attemptsLeftDisplay.textContent = attemptsLeft;
+            updateGuessList();
+            
+            // Check guess
+            if (guess === targetNumber) {
+                // Correct guess
+                handleWin();
+            } else if (attemptsLeft <= 0) {
+                // Out of attempts
+                handleLoss();
+            } else {
+                // Wrong guess
+                const direction = guess < targetNumber ? 'higher' : 'lower';
+                feedback.textContent = `Wrong! Try a ${direction} number.`;
+                feedback.className = 'feedback text-red-400';
+                vibrate(100);
+            }
+            
+            // Clear input
+            guessInput.value = '';
+        }
+
+        // Handle win
+        function handleWin() {
+            feedback.textContent = `Correct! The number was ${targetNumber}.`;
+            feedback.className = 'feedback text-green-400';
+            
+            // Calculate score (higher for fewer attempts and larger range)
+            const score = Math.floor((maxRange / (maxAttempts - attemptsLeft + 1)) * 10);
+            
+            // Update high score
+            if (score > highScore) {
+                highScore = score;
+                highScoreDisplay.textContent = highScore;
+                saveHighScore('guessNumber', highScore);
+                showModal(`New High Score: ${highScore}!`, 'info');
+            } else {
+                showModal(`You won with ${attemptsLeft} attempts left!`, 'info');
+            }
+            
+            // Disable input
+            guessInput.disabled = true;
+            guessBtn.disabled = true;
+            
+            // Celebrate
+            vibrate([100, 50, 100]);
+        }
+
+        // Handle loss
+        function handleLoss() {
+            feedback.textContent = `Game Over! The number was ${targetNumber}.`;
+            feedback.className = 'feedback text-red-400';
+            showModal(`Sorry, you're out of attempts! The number was ${targetNumber}.`, 'error');
+            
+            // Disable input
+            guessInput.disabled = true;
+            guessBtn.disabled = true;
+            
+            vibrate([200, 100, 200]);
+        }
+
+        // Update guess list
+        function updateGuessList() {
+            guessList.innerHTML = '';
+            
+            guesses.forEach(guess => {
+                const guessItem = document.createElement('div');
+                guessItem.className = 'guess-item bg-white/10 px-4 py-2 rounded-lg flex justify-between';
+                
+                const guessText = document.createElement('span');
+                guessText.textContent = guess;
+                
+                const direction = document.createElement('span');
+                direction.className = guess < targetNumber ? 'text-green-400' : 'text-red-400';
+                direction.textContent = guess < targetNumber ? 'Too low' : 'Too high';
+                
+                guessItem.appendChild(guessText);
+                guessItem.appendChild(direction);
+                guessList.appendChild(guessItem);
+            });
+        }
+
+        // Show custom range selector
+        function showCustomRange() {
+            document.querySelector('.difficulty-selector').style.display = 'none';
+            rangeSelector.style.display = 'block';
+            gameScreen.style.display = 'none';
+        }
+
+        // Event listeners
+        difficultyBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const difficulty = btn.dataset.difficulty;
+                if (difficulty === 'custom') {
+                    showCustomRange();
+                } else {
+                    startGame(difficulty);
+                }
+            });
+        });
+
+        rangeSlider.addEventListener('input', () => {
+            const value = parseInt(rangeSlider.value);
+            rangeMax.textContent = value;
+            rangeDisplay.textContent = value;
+        });
+
+        customStartBtn.addEventListener('click', () => {
+            startGame('custom');
+        });
+
+        guessBtn.addEventListener('click', handleGuess);
+
+        guessInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleGuess();
+            }
+        });
+
+        newGameBtn.addEventListener('click', initGame);
+
+        // Initialize the game on load
+        initGame();
+    </script>
+</body>
+</html>
