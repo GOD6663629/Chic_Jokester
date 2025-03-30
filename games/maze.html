@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Challenge | Chic Jokester</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/styles.css">
+    <style>
+        #maze-canvas {
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+        }
+        .arrow-btn {
+            width: 60px;
+            height: 60px;
+            font-size: 24px;
+        }
+        .player {
+            transition: all 0.2s ease;
+        }
+        .win-message {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-green-900 to-emerald-800 min-h-screen text-white">
+    <div class="container mx-auto py-8 px-4">
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-center">Maze Challenge</h1>
+            <div class="flex justify-between items-center mt-4">
+                <a href="../index.html" class="text-green-300 hover:text-white">
+                    <i class="fas fa-arrow-left mr-2"></i> Back to Games
+                </a>
+                <div class="score-display bg-white/10 px-4 py-2 rounded-full">
+                    <span class="font-bold">Time:</span> <span id="time">00:00</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex flex-col items-center">
+            <div class="maze-container relative mb-8">
+                <canvas id="maze-canvas" width="600" height="400"></canvas>
+                <div id="win-message" class="win-message absolute inset-0 flex items-center justify-center bg-black/70 text-4xl font-bold hidden">
+                    You Escaped!
+                </div>
+            </div>
+
+            <div class="controls flex flex-col items-center">
+                <div class="mb-4 flex gap-2">
+                    <button id="up-btn" class="arrow-btn bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-arrow-up"></i>
+                    </button>
+                </div>
+                <div class="flex gap-2 mb-4">
+                    <button id="left-btn" class="arrow-btn bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <button id="down-btn" class="arrow-btn bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-arrow-down"></i>
+                    </button>
+                    <button id="right-btn" class="arrow-btn bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="flex gap-4">
+                    <button id="new-game-btn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-full">
+                        <i class="fas fa-redo mr-2"></i> New Maze
+                    </button>
+                    <button id="solve-btn" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-full">
+                        <i class="fas fa-lightbulb mr-2"></i> Show Solution
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/utils.js"></script>
+    <script>
+        // Game variables
+        const canvas = document.getElementById('maze-canvas');
+        const ctx = canvas.getContext('2d');
+        const cellSize = 40;
+        const rows = 10;
+        const cols = 15;
+        let maze = [];
+        let player = { x: 1, y: 1 };
+        let exit = { x: cols - 2, y: rows - 2 };
+        let startTime = 0;
+        let timerInterval;
+        let solutionPath = [];
+        let showingSolution = false;
+
+        // DOM elements
+        const timeDisplay = document.getElementById('time');
+        const upBtn = document.getElementById('up-btn');
+        const downBtn = document.getElementById('down-btn');
+        const leftBtn = document.getElementById('left-btn');
+        const rightBtn = document.getElementById('right-btn');
+        const newGameBtn = document.getElementById('new-game-btn');
+        const solveBtn = document.getElementById('solve-btn');
+        const winMessage = document.getElementById('win-message');
+
+        // Initialize the game
+        function initGame() {
+            // Generate maze
+            generateMaze();
+            
+            // Set player position
+            player = { x: 1, y: 1 };
+            exit = { x: cols - 2, y: rows - 2 };
+            
+            // Reset timer
+            clearInterval(timerInterval);
+            startTime = Date.now();
+            timerInterval = setInterval(updateTimer, 1000);
+            updateTimer();
+            
+            // Hide win message
+            winMessage.classList.add('hidden');
+            
+            // Draw initial maze
+            drawMaze();
+            
+            // Find solution path (for hint)
+            findSolution();
+        }
+
+        // Generate maze using recursive backtracking algorithm
+        function generateMaze() {
+            // Initialize maze with walls (1 = wall, 0 = path)
+            maze = Array(rows).fill().map(() => Array(cols).fill(1));
+            
+            // Start point
+            maze[1][1] = 0;
+            
+            // Recursive backtracking
+            const stack = [{x: 1, y: 1}];
+            const directions = [
+                {dx: 0, dy: -2}, // up
+                {dx: 0, dy: 2},  // down
+                {dx: -2, dy: 0}, // left
+                {dx: 2, dy: 0}   // right
+            ];
+            
+            while (stack.length > 0) {
+                const current = stack[stack.length - 1];
+                const {x, y} = current;
+                
+                // Shuffle directions
+                const shuffledDirections = [...directions].sort(() => Math.random() - 0.5);
+                let found = false;
+                
+                for (const dir of shuffledDirections) {
+                    const nx = x + dir.dx;
+                    const ny = y + dir.dy;
+                    
+                    if (nx > 0 && nx < cols - 1 && ny > 0 && ny < rows - 1 && maze[ny][nx] === 1) {
+                        // Carve path
+                        maze[ny][nx] = 0;
+                        maze[y + dir.dy/2][x + dir.dx/2] = 0;
+                        stack.push({x: nx, y: ny});
+                        found = true;
+                        break;
+                    }
+                }
+                
+                if (!found) {
+                    stack.pop();
+                }
+            }
+            
+            // Ensure exit is reachable
+            maze[rows - 2][cols - 2] = 0;
+        }
+
+        // Draw the maze
+        function drawMaze() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw walls
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (maze[y][x] === 1) {
+                        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                    }
+                }
+            }
+            
+            // Draw exit
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.7)';
+            ctx.fillRect(exit.x * cellSize, exit.y * cellSize, cellSize, cellSize);
+            
+            // Draw solution path if showing
+            if (showingSolution) {
+                ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(
+                    (solutionPath[0].x + 0.5) * cellSize, 
+                    (solutionPath[0].y + 0.5) * cellSize
+                );
+                for (let i = 1; i < solutionPath.length; i++) {
+                    ctx.lineTo(
+                        (solutionPath[i].x + 0.5) * cellSize, 
+                        (solutionPath[i].y + 0.5) * cellSize
+                    );
+                }
+                ctx.stroke();
+            }
+            
+            // Draw player
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+            ctx.beginPath();
+            ctx.arc(
+                (player.x + 0.5) * cellSize, 
+                (player.y + 0.5) * cellSize, 
+                cellSize * 0.4, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+
+        // Move player
+        function movePlayer(dx, dy) {
+            const newX = player.x + dx;
+            const newY = player.y + dy;
+            
+            // Check boundaries and walls
+            if (newX >= 0 && newX < cols && newY >= 0 && newY < rows && maze[newY][newX] === 0) {
+                player.x = newX;
+                player.y = newY;
+                drawMaze();
+                
+                // Check win condition
+                if (player.x === exit.x && player.y === exit.y) {
+                    handleWin();
+                }
+                
+                vibrate(50);
+            } else {
+                vibrate(100);
+            }
+        }
+
+        // Handle win
+        function handleWin() {
+            clearInterval(timerInterval);
+            winMessage.classList.remove('hidden');
+            showModal(`You escaped in ${timeDisplay.textContent}!`, 'info');
+            
+            // Save high score (fastest time)
+            const currentTime = Math.floor((Date.now() - startTime) / 1000);
+            const bestTime = getHighScore('maze') || Infinity;
+            if (currentTime < bestTime) {
+                saveHighScore('maze', currentTime);
+            }
+            
+            vibrate([100, 50, 100, 50, 100]);
+        }
+
+        // Update timer
+        function updateTimer() {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            timeDisplay.textContent = formatTime(elapsed);
+        }
+
+        // Find solution using BFS
+        function findSolution() {
+            const queue = [{x: player.x, y: player.y, path: [{x: player.x, y: player.y}]}];
+            const visited = new Set();
+            visited.add(`${player.x},${player.y}`);
+            
+            const directions = [
+                {dx: 0, dy: -1}, // up
+                {dx: 0, dy: 1},  // down
+                {dx: -1, dy: 0}, // left
+                {dx: 1, dy: 0}   // right
+            ];
+            
+            while (queue.length > 0) {
+                const current = queue.shift();
+                
+                // Check if reached exit
+                if (current.x === exit.x && current.y === exit.y) {
+                    solutionPath = current.path;
+                    return;
+                }
+                
+                // Explore neighbors
+                for (const dir of directions) {
+                    const nx = current.x + dir.dx;
+                    const ny = current.y + dir.dy;
+                    const key = `${nx},${ny}`;
+                    
+                    if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && 
+                        maze[ny][nx] === 0 && !visited.has(key)) {
+                        visited.add(key);
+                        queue.push({
+                            x: nx, 
+                            y: ny, 
+                            path: [...current.path, {x: nx, y: ny}]
+                        });
+                    }
+                }
+            }
+            
+            // No solution found (shouldn't happen with our maze generation)
+            solutionPath = [];
+        }
+
+        // Toggle solution path
+        function toggleSolution() {
+            showingSolution = !showingSolution;
+            solveBtn.textContent = showingSolution ? 'Hide Solution' : 'Show Solution';
+            solveBtn.classList.toggle('bg-purple-500');
+            solveBtn.classList.toggle('bg-blue-500');
+            drawMaze();
+        }
+
+        // Keyboard controls
+        function handleKeyDown(e) {
+            switch(e.key) {
+                case 'ArrowUp':
+                    movePlayer(0, -1);
+                    break;
+                case 'ArrowDown':
+                    movePlayer(0, 1);
+                    break;
+                case 'ArrowLeft':
+                    movePlayer(-1, 0);
+                    break;
+                case 'ArrowRight':
+                    movePlayer(1, 0);
+                    break;
+            }
+        }
+
+        // Event listeners
+        upBtn.addEventListener('click', () => movePlayer(0, -1));
+        downBtn.addEventListener('click', () => movePlayer(0, 1));
+        leftBtn.addEventListener('click', () => movePlayer(-1, 0));
+        rightBtn.addEventListener('click', () => movePlayer(1, 0));
+        newGameBtn.addEventListener('click', initGame);
+        solveBtn.addEventListener('click', toggleSolution);
+        document.addEventListener('keydown', handleKeyDown);
+
+        // Initialize the game on load
+        initGame();
+    </script>
+</body>
+</html>
