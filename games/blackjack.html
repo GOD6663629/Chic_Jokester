@@ -73,6 +73,7 @@
     <h1>Blackjack</h1>
     <div id="game-area">
         <p id="status">Press 'Start Game' to play!</p>
+        <p>Balance: $<span id="balance">1000</span></p>
         <p>Your Cards: <span id="player-cards"></span> (<span id="player-score">0</span>)</p>
         <p>Dealer's Cards: <span id="dealer-cards"></span> (<span id="dealer-score">0</span>)</p>
         <button class="button" onclick="startGame()">Start Game</button>
@@ -81,94 +82,116 @@
     </div>
     <audio id="card-sound" src="https://www.soundjay.com/card/card-flip-1.mp3"></audio>
     <script>
-        let deck, playerHand, dealerHand;
+    let deck, playerHand, dealerHand;
+    let balance = 1000;
+    const betAmount = 100;
 
-        function createDeck() {
-            let suits = ["S", "H", "D", "C"];
-            let values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
-            let deck = [];
-            for (let suit of suits) {
-                for (let value of values) {
-                    let imageUrl = `https://deckofcardsapi.com/static/img/${value}${suit}.png`;
-                    deck.push({ value, suit, imageUrl });
-                }
-            }
-            return deck.sort(() => Math.random() - 0.5);
-        }
-
-        function calculateScore(hand) {
-            let score = 0;
-            let aces = 0;
-            for (let card of hand) {
-                if (["J", "Q", "K"].includes(card.value)) {
-                    score += 10;
-                } else if (card.value === "A") {
-                    score += 11;
-                    aces++;
-                } else {
-                    score += parseInt(card.value);
-                }
-            }
-            while (score > 21 && aces) {
-                score -= 10;
-                aces--;
-            }
-            return score;
-        }
-
-        function playSound() {
-            document.getElementById("card-sound").play();
-        }
-
-        function startGame() {
-            deck = createDeck();
-            playerHand = [deck.pop(), deck.pop()];
-            dealerHand = [deck.pop(), deck.pop()];
-            updateDisplay();
-            document.getElementById("status").textContent = "Game Started. Hit or Stand?";
-        }
-
-        function hit() {
-            if (playerHand.length < 5) {
-                playerHand.push(deck.pop());
-                updateDisplay();
-                if (calculateScore(playerHand) > 21) {
-                    determineWinner();
-                }
+    function createDeck() {
+        let suits = ["S", "H", "D", "C"];
+        let values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+        let deck = [];
+        for (let suit of suits) {
+            for (let value of values) {
+                let imageUrl = `https://deckofcardsapi.com/static/img/${value}${suit}.png`;
+                deck.push({ value, suit, imageUrl });
             }
         }
+        return deck.sort(() => Math.random() - 0.5);
+    }
 
-        function stand() {
-            while (calculateScore(dealerHand) < 17) {
-                dealerHand.push(deck.pop());
-            }
-            updateDisplay();
-            determineWinner();
-        }
-
-        function updateDisplay() {
-            document.getElementById("player-cards").innerHTML = playerHand.map(c => `<img class='cards card-appear' src='${c.imageUrl}' alt='card'>`).join(" ");
-            document.getElementById("dealer-cards").innerHTML = dealerHand.map(c => `<img class='cards card-appear' src='${c.imageUrl}' alt='card'>`).join(" ");
-            document.getElementById("player-score").textContent = calculateScore(playerHand);
-            document.getElementById("dealer-score").textContent = dealerHand.length === 2 ? "?" : calculateScore(dealerHand);
-            playSound();
-        }
-
-        function determineWinner() {
-            let playerScore = calculateScore(playerHand);
-            let dealerScore = calculateScore(dealerHand);
-            let status = "";
-            if (playerScore > 21) {
-                status = "You Busted! Dealer Wins.";
-            } else if (dealerScore > 21 || playerScore > dealerScore) {
-                status = "You Win!";
-            } else if (playerScore < dealerScore) {
-                status = "Dealer Wins!";
+    function calculateScore(hand) {
+        let score = 0;
+        let aces = 0;
+        for (let card of hand) {
+            if (["J", "Q", "K"].includes(card.value)) {
+                score += 10;
+            } else if (card.value === "A") {
+                score += 11;
+                aces++;
             } else {
-                status = "It's a Draw!";
+                score += parseInt(card.value);
             }
-            document.getElementById("status").textContent = status;
         }
-    </script>
+        while (score > 21 && aces) {
+            score -= 10;
+            aces--;
+        }
+        return score;
+    }
+
+    function playSound() {
+        document.getElementById("card-sound").play();
+    }
+
+    function updateBalanceDisplay() {
+        document.getElementById("balance").textContent = balance;
+    }
+
+    function startGame() {
+        if (balance < betAmount) {
+            document.getElementById("status").textContent = "Not enough balance to place a bet!";
+            return;
+        }
+
+        balance -= betAmount;
+        updateBalanceDisplay();
+
+        deck = createDeck();
+        playerHand = [deck.pop(), deck.pop()];
+        dealerHand = [deck.pop(), deck.pop()];
+        updateDisplay();
+        document.getElementById("status").textContent = "Game Started. Hit or Stand?";
+    }
+
+    function hit() {
+        if (playerHand.length < 5) {
+            playerHand.push(deck.pop());
+            updateDisplay();
+            if (calculateScore(playerHand) > 21) {
+                determineWinner();
+            }
+        }
+    }
+
+    function stand() {
+        while (calculateScore(dealerHand) < 17) {
+            dealerHand.push(deck.pop());
+        }
+        updateDisplay();
+        determineWinner();
+    }
+
+    function updateDisplay() {
+        document.getElementById("player-cards").innerHTML = playerHand.map(c => `<img class='cards card-appear' src='${c.imageUrl}' alt='card'>`).join(" ");
+        document.getElementById("dealer-cards").innerHTML = dealerHand.map(c => `<img class='cards card-appear' src='${c.imageUrl}' alt='card'>`).join(" ");
+        document.getElementById("player-score").textContent = calculateScore(playerHand);
+        document.getElementById("dealer-score").textContent = dealerHand.length === 2 ? "?" : calculateScore(dealerHand);
+        playSound();
+    }
+
+    function determineWinner() {
+        let playerScore = calculateScore(playerHand);
+        let dealerScore = calculateScore(dealerHand);
+        let status = "";
+
+        if (playerScore > 21) {
+            status = "You Busted! Dealer Wins.";
+        } else if (dealerScore > 21 || playerScore > dealerScore) {
+            status = "You Win!";
+            balance += betAmount * 2;
+        } else if (playerScore < dealerScore) {
+            status = "Dealer Wins!";
+        } else {
+            status = "It's a Draw!";
+            balance += betAmount;
+        }
+
+        updateBalanceDisplay();
+        document.getElementById("status").textContent = status;
+    }
+
+    updateBalanceDisplay();
+</script>
+
 </body>
 </html>
