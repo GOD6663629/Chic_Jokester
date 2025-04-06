@@ -83,8 +83,22 @@
     <audio id="card-sound" src="https://www.soundjay.com/card/card-flip-1.mp3"></audio>
     <script>
     let deck, playerHand, dealerHand;
-    let balance = 1000;
-    const betAmount = 100;
+    let betAmount = 100;
+    let balance = loadBalance();
+
+    function loadBalance() {
+        return parseInt(localStorage.getItem("blackjackBalance")) || 1000;
+    }
+
+    function saveBalance() {
+        localStorage.setItem("blackjackBalance", balance);
+    }
+
+    function updateBalanceDisplay() {
+        document.getElementById("balance").textContent = balance;
+        saveBalance();
+    }
+
 
     function createDeck() {
         let suits = ["S", "H", "D", "C"];
